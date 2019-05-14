@@ -43,9 +43,34 @@ def train_dev_split(train_data, train_labels):
     return train_x, dev_x, train_y, dev_y
 
 
-def train_perceptron(train_x, train_y, dev_x, dev_y):
-    # Perceptron algorithm
-    pass
+def train_perceptron(train_x, train_y, epochs, eta, k):
+    N = len(train_x)  # number of data points
+    n = len(train_x[0])  # number of features
+    # w represents the coefficients of x, b represents the free coefficient
+    # since we implement multiclass perceptron with 3 classes, we have 3 sets of w and b
+    # initialize parameters to 0.
+    w = np.zeros((k, n))
+    b = np.zeros(k)
+    for ep in range(epochs):
+        #shuffle train_x and train_y the same way
+        arr = np.arange(N)
+        np.random.shuffle(arr)
+        print('arr', arr)
+        train_x = train_x[arr]
+        train_y = train_y[arr]
+        for i in range(N):
+            # find y hat - the predicted class - as the argmax of the products
+            x = train_x[i]
+            y = train_y[i]
+            values = np.dot(w, x)+b
+            y_hat = np.argmax(values)
+            # if the prediction doesn't match, update w,b
+            if y_hat != y:
+                w[y] = w[y] + eta*x
+                b[y] = b[y] + eta
+                w[y_hat] = w[y_hat] - eta*x
+                b[y_hat] = b[y_hat] - eta
+    return w, b
 
 
 def train_svm(train_x, train_y, dev_x, dev_y):
