@@ -51,6 +51,7 @@ def train_dev_split(train_data, train_labels):
 
 
 def train_perceptron(train_x, train_y, epochs, eta, k):
+    # Perceptron Algorithm
     N = len(train_x)  # number of data points
     n = len(train_x[0])  # number of features
     # w represents the coefficients of x, b represents the free coefficient
@@ -111,9 +112,39 @@ def train_svm(train_x, train_y, epochs, eta, Lambda, k):
     return w
 
 
-def train_pa(train_x, train_y, dev_x, dev_y):
+def train_pa(train_x, train_y, epochs, k):
     # Passive Aggressive algorithm
-    pass
+    N = len(train_x)
+    n = len(train_x[0])
+    # initialize parameters to 0.
+    w = np.zeros((k, n))
+    for ep in range(epochs):
+        #shuffle train_x and train_y the same way
+        arr = np.arange(N)
+        np.random.shuffle(arr)
+        train_x = train_x[arr]
+        train_y = train_y[arr]
+        for i in range(N):
+            # find y hat - the predicted class - as the argmax of the products, without y
+            x = train_x[i]
+            y = train_y[i]
+            y = int(y)
+            values = np.dot(w, x)
+            # put -inf in y index to find argmax without y
+            values[y] = - np.inf
+            y_hat = np.argmax(values)
+            # compute tau
+            err = 1-np.dot(w[y, :], x)+np.dot(w[y_hat, :], x)
+            loss = np.max([0, err])
+            tau = loss/np.dot(x,x)
+            # update w
+            for l in range(k):
+                if l == y:
+                     w[y, :] = w[y, :] + tau * x
+                if l == y_hat:
+                    w[y_hat, :] = w[y_hat, :] - tau * x
+        print(evaluate(dev_x, dev_y, w))
+    return w
 
 
 def evaluate(dev_x, dev_y, w):
