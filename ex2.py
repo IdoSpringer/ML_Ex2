@@ -4,12 +4,6 @@ from random import shuffle
 from sklearn.model_selection import train_test_split
 # CANNOT USE SKLEARN... FIX LATER (or delete train test split)
 
-# todo:
-# Tal if you have any question ask me on WhatsApp or Skype
-# Please implement at least one training algorithm function
-# (I think perceptron is the easiest)
-# You can change the other code if needed
-
 
 def load_data(data_file):
     data = []
@@ -21,6 +15,7 @@ def load_data(data_file):
             # Split entry
             line = line.strip().split(',')
             line[0] = sex_to_index[line[0]]
+            line.append(1)
             # Add to data
             data.append(np.array(line, dtype=np.float64))
     return np.array(data)
@@ -39,7 +34,11 @@ def normalize_data(data):
         # normalize feature in different way
         pass
     # (notice - do not divide by zero)
-    data = (data - mean) / std
+    for i in range(len(std) - 1):
+        if std[i] == 0:
+            data[i] = data[i] - mean[i]
+        else:
+            data[i] = (data[i] - mean[i]) / std[i]
     return data
 
 
@@ -50,100 +49,57 @@ def train_dev_split(train_data, train_labels):
     return train_x, dev_x, train_y, dev_y
 
 
-def train_perceptron(train_x, train_y, epochs, eta, k):
-    # Perceptron Algorithm
-    N = len(train_x)  # number of data points
-    n = len(train_x[0])  # number of features
-    # w represents the coefficients of x, b represents the free coefficient
-    # since we implement multiclass perceptron with 3 classes, we have 3 sets of w and b
+def train(train_x, train_y, epochs, eta, Lambda, key):
+    N = len(train_x)
+    n = len(train_x[0]) # number of original features plus one dummy feature
+    k = 3
     # initialize parameters to 0.
     w = np.zeros((k, n))
-    # b = np.zeros(k)
     for ep in range(epochs):
         # shuffle train_x and train_y the same way
         arr = np.arange(N)
+        np.random.seed(seed=42)
         np.random.shuffle(arr)
         train_x = train_x[arr]
         train_y = train_y[arr]
+        if ep%10==0:
+            eta *= 0.8
         for i in range(N):
-            # find y hat - the predicted class - as the argmax of the products
             x = train_x[i]
             y = train_y[i]
-            values = np.dot(w, x) # + b
-            y_hat = np.argmax(values)
+            y = int(y)
+            values = np.dot(w, x)
+            if key=='per':
+                y_hat = np.argmax(values)
             # if the prediction doesn't match, update w,b
-            if y_hat != y:
-                y = int(y)
-                w[y, :] = w[y, :] + eta * x
-                # b[y] = b[y] + eta
-                w[y_hat, :] = w[y_hat, :] - eta * x
-                # b[y_hat] = b[y_hat] - eta
-        print(evaluate(dev_x, dev_y, w))
-    return w
-
-
-def train_svm(train_x, train_y, epochs, eta, Lambda, k):
-    # Support Vector Machine algorithm
-    N = len(train_x)
-    n = len(train_x[0])
-    w = np.zeros((k, n))
-    for ep in range(epochs):
-        arr = np.arange(N)
-        np.random.shuffle(arr)
-        train_x = train_x[arr]
-        train_y = train_y[arr]
-        for i in range(N):
-            x = train_x[i]
-            y = train_y[i]
-            y = int(y)
-            values = np.dot(w, x)
-            # Put -inf in y index to find argmax without y
-            values[y] = - np.inf
-            y_hat = np.argmax(values)
-            s = 1 - eta * Lambda
-            for l in range(k):
-                if l == y:
-                    w[l, :] = s * w[l, :] + eta * x
-                elif l == y_hat:
-                    w[l, :] = s * w[l, :] - eta * x
-                else:
-                    w[l, :] = s * w[l, :]
-        print(evaluate(dev_x, dev_y, w))
-    return w
-
-
-def train_pa(train_x, train_y, epochs, k):
-    # Passive Aggressive algorithm
-    N = len(train_x)
-    n = len(train_x[0])
-    # initialize parameters to 0.
-    w = np.zeros((k, n))
-    for ep in range(epochs):
-        #shuffle train_x and train_y the same way
-        arr = np.arange(N)
-        np.random.shuffle(arr)
-        train_x = train_x[arr]
-        train_y = train_y[arr]
-        for i in range(N):
-            # find y hat - the predicted class - as the argmax of the products, without y
-            x = train_x[i]
-            y = train_y[i]
-            y = int(y)
-            values = np.dot(w, x)
-            # put -inf in y index to find argmax without y
-            values[y] = - np.inf
-            y_hat = np.argmax(values)
-            # compute tau
-            err = 1-np.dot(w[y, :], x)+np.dot(w[y_hat, :], x)
-            loss = np.max([0, err])
-            tau = loss/np.dot(x,x)
-            # update w
-            for l in range(k):
-                if l == y:
-                     w[y, :] = w[y, :] + tau * x
-                if l == y_hat:
-                    w[y_hat, :] = w[y_hat, :] - tau * x
-        print(evaluate(dev_x, dev_y, w))
+                if y_hat != y:
+                    w[y, :] = w[y, :] + eta * x
+                    w[y_hat, :] = w[y_hat, :] - eta * x
+            elif key=='svm':
+                values[y] = - np.inf
+                y_hat = np.argmax(values)
+                s = 1 - eta * Lambda
+                for l in range(k):
+                    if l == y:
+                        w[l, :] = s * w[l, :] + eta * x
+                    elif l == y_hat:
+                        w[l, :] = s * w[l, :] - eta * x
+                    else:
+                        w[l, :] = s * w[l, :]
+            elif key=='pa':
+                values[y] = - np.inf
+                y_hat = np.argmax(values)
+                # compute tau
+                err = 1-np.dot(w[y, :], x)+np.dot(w[y_hat, :], x)
+                loss = np.max([0, err])
+                tau = loss/np.dot(x,x)
+                # update w
+                for l in range(k):
+                    if l == y:
+                         w[y, :] = w[y, :] + tau * x
+                    if l == y_hat:
+                        w[y_hat, :] = w[y_hat, :] - tau * x
+        print(evaluate(train_x, train_y, w))
     return w
 
 
@@ -160,39 +116,43 @@ def evaluate(dev_x, dev_y, w):
     return accuracy
 
 
-def predict(test_x, parameters):
-    pass
+def predict(test_x, w):
+    N = len(test_x)
+    y_hats = np.zeros(N, dtype = int)
+    for i in range(N):
+        x = test_x[i]
+        values = np.dot(w, x)
+        y_hat = np.argmax(values)
+        y_hats[i] = y_hat
+    return y_hats
 
 
 def main(argv):
     train_data = load_data(argv[1])
+    train_data = normalize_data(train_data)
     train_labels = load_labels(argv[2])
+    test_x = load_data(argv[3])
+    test_x = normalize_data(test_x)
     global dev_x, dev_y
     train_x, dev_x, train_y, dev_y = train_dev_split(train_data, train_labels)
-    train_data = normalize_data(train_data)
     # Train parameters with 3 algorithms
-    train_perceptron(train_x, train_y, epochs=100, eta=0.01, k=3)
-    train_svm(train_x, train_y, epochs=100, eta=0.01, Lambda=0.5,  k=3)
+    '''w_per = train(train_x, train_y, epochs=150, eta=0.01, Lambda=None,  key ='per')'''
+    w_svm = train(train_x, train_y, epochs=150, eta=0.1, Lambda=0.1,  key ='svm')
+    '''w_pa = train(train_x, train_y, epochs=100, eta=None, Lambda=None,  key ='pa')'''
     # Predict test and print prediction
-    pass
+    '''y_hats_per = predict(test_x, w_per)'''
+    y_hats_svm = predict(test_x, w_svm)
+    '''y_hats_pa = predict(test_x, w_pa)'''
+    '''for i in range(len(test_x)):
+        print('perceptron: ' + str(y_hats_per[i]) + ', ' + 'svm: ' +
+              str(y_hats_svm[i]) + ', ' 'pa: ' + str(y_hats_pa[i]))
+    print(y_hats_per)
+    print(y_hats_svm)
+    print(y_hats_pa)'''
 
 
 # main
 if __name__ == '__main__':
     # Real command
     # main(sys.argv)
-    main(['ex2.py', 'train_x.txt', 'train_y.txt', 'test_x.txt'])
-
-
-# Checks
-'''
-train_data = load_data('train_x.txt')
-print('train_data', train_data)
-train_labels = load_labels('train_y.txt')
-print('train_labels', train_labels)
-train_x, dev_x, train_y, dev_y = train_dev_split(train_data, train_labels)
-print('train_x', train_x, len(train_x))
-print('train_y', train_y, len(train_y))
-print('dev_x', dev_x, len(dev_x))
-print('dev_y', dev_y, len(dev_y))
-'''
+    main(['ex2.py', 'train_x.txt', 'train_y.txt', 'train_x.txt'])
