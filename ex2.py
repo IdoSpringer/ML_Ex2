@@ -136,13 +136,13 @@ def main(argv):
     global dev_x, dev_y
     train_x, dev_x, train_y, dev_y = train_dev_split(train_data, train_labels)
     # Train parameters with 3 algorithms
-    '''w_per = train(train_x, train_y, epochs=150, eta=0.01, Lambda=None,  key ='per')'''
+    w_per = train(train_x, train_y, epochs=150, eta=0.01, Lambda=None,  key ='per')
     w_svm = train(train_x, train_y, epochs=150, eta=0.1, Lambda=0.1,  key ='svm')
-    '''w_pa = train(train_x, train_y, epochs=100, eta=None, Lambda=None,  key ='pa')'''
+    w_pa = train(train_x, train_y, epochs=100, eta=None, Lambda=None,  key ='pa')
     # Predict test and print prediction
-    '''y_hats_per = predict(test_x, w_per)'''
+    y_hats_per = predict(test_x, w_per)
     y_hats_svm = predict(test_x, w_svm)
-    '''y_hats_pa = predict(test_x, w_pa)'''
+    y_hats_pa = predict(test_x, w_pa)
     '''for i in range(len(test_x)):
         print('perceptron: ' + str(y_hats_per[i]) + ', ' + 'svm: ' +
               str(y_hats_svm[i]) + ', ' 'pa: ' + str(y_hats_pa[i]))
