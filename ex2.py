@@ -41,10 +41,10 @@ def normalize_data(data, mean, std):
     for i in range(len(std) - 1):
         if std[i] == 0:
             # Do not divide std if it is 0
-            data[i] = data[i] - mean[i]
+            data[:, i] = data[:, i] - mean[i]
         else:
             # z-score
-            data[i] = (data[i] - mean[i]) / std[i]
+            data[:, i] = (data[:, i] - mean[i]) / std[i]
     return data
 
 
@@ -140,7 +140,7 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
                 # Compute tau
                 err = 1 - np.dot(w[y, :], x) + np.dot(w[y_hat, :], x)
                 loss = np.max([0, err])
-                tau = loss/np.dot(x,x)
+                tau = loss/(2*np.dot(x,x))
                 # Update w
                 for l in range(k):
                     if l == y:
@@ -149,8 +149,10 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
                         w[y_hat, :] = w[y_hat, :] - tau * x
         # Compute validation accuracy
         dev_acc = evaluate(dev_x, dev_y, w)
+        print(dev_acc)
         # Update epoch index
         ep += 1
+    print()
     return w
 
 
