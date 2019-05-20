@@ -1,8 +1,10 @@
+import matplotlib.pyplot as plt
 import sys
 import numpy as np
 from random import shuffle
 from sklearn.model_selection import train_test_split
 # CANNOT USE SKLEARN... FIX LATER (or delete train test split)
+
 
 
 def load_data(data_file):
@@ -53,18 +55,23 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
     k = 3
     # initialize parameters to 0.
     w = np.zeros((k, n))
-    for ep in range(epochs):
+    train_accs = []
+    dev_accs = []
+    ep = 0
+    dev_acc = 0
+    while ep < epochs and dev_acc < 0.65:
         # shuffle train_x and train_y the same way
         arr = np.arange(N)
         np.random.seed(seed=42)
         np.random.shuffle(arr)
         train_x = train_x[arr]
         train_y = train_y[arr]
-        if ep % 10 == 0:
-            try:
-                eta *= 0.8
-            except TypeError:
-                pass
+        if key == 'per' and ep % 5 == 0:
+            eta *= 0.8
+        elif key == 'svm' and ep % 10 == 0:
+            eta *= 0.8
+        elif key == 'pa':
+            pass
         for i in range(N):
             x = train_x[i]
             y = train_y[i]
@@ -101,7 +108,23 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
                     if l == y_hat:
                         w[y_hat, :] = w[y_hat, :] - tau * x
         train_acc = evaluate(train_x, train_y, w)
-        dev_acc = evaluate(train_x, train_y, w)
+        train_accs.append(train_acc)
+        dev_acc = evaluate(dev_x, dev_y, w)
+        dev_accs.append(dev_acc)
+        ep += 1
+    print(train_accs)
+    plt.plot(range(ep), train_accs, label='train')
+    plt.plot(range(ep), dev_accs, label='validation')
+    plt.xlabel('epoch')
+    plt.ylabel('accuracy')
+    if key=='per':
+        plt.title('perceptron algorithm accuracy')
+    if key=='svm':
+        plt.title('SVM algorithm accuracy')
+    if key=='pa':
+        plt.title('PA algorithm accuracy')
+    plt.legend()
+    plt.show()
     return w
 
 
