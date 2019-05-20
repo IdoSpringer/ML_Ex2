@@ -1,8 +1,6 @@
 import sys
 import numpy as np
 from random import shuffle
-from sklearn.model_selection import train_test_split
-# CANNOT USE SKLEARN... FIX LATER (or delete train test split)
 
 
 def load_data(data_file):
@@ -28,10 +26,6 @@ def load_labels(labels_file):
 
 
 def normalize_data(data, mean, std):
-    if any(int(value) for value in std) == 0:
-        # normalize feature in different way
-        pass
-    # (notice - do not divide by zero)
     for i in range(len(std) - 1):
         if std[i] == 0:
             data[i] = data[i] - mean[i]
@@ -43,7 +37,17 @@ def normalize_data(data, mean, std):
 def train_dev_split(train_data, train_labels):
     # We split the original train file to 80% train and 20% validation data
     # We will delete this after hyper-parameters tuning and use only test file
-    train_x, dev_x, train_y, dev_y = train_test_split(train_data, train_labels, test_size=0.2)
+    N = len(train_data)
+    arr = np.arange(N)
+    np.random.seed(seed=42)
+    np.random.shuffle(arr)
+    train_data = train_data[arr]
+    train_labels = train_labels[arr]
+    stop_index = int(N*0.8)
+    train_x = train_data[:stop_index]
+    train_y = train_labels[:stop_index]
+    dev_x = train_data[stop_index:]
+    dev_y = train_labels[stop_index:]
     return train_x, dev_x, train_y, dev_y
 
 
@@ -53,30 +57,33 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
     k = 3
     # initialize parameters to 0.
     w = np.zeros((k, n))
-    for ep in range(epochs):
+    ep = 0
+    dev_acc = 0
+    while ep < epochs and dev_acc < 0.65:
         # shuffle train_x and train_y the same way
         arr = np.arange(N)
         np.random.seed(seed=42)
         np.random.shuffle(arr)
         train_x = train_x[arr]
         train_y = train_y[arr]
-        if ep % 10 == 0:
-            try:
-                eta *= 0.8
-            except TypeError:
-                pass
+        if key == 'per' and ep % 5 == 0:
+            eta *= 0.8
+        elif key == 'svm' and ep % 10 == 0:
+            eta *= 0.8
+        elif key == 'pa':
+            pass
         for i in range(N):
             x = train_x[i]
             y = train_y[i]
             y = int(y)
             values = np.dot(w, x)
-            if key=='per':
+            if key == 'per':
                 y_hat = np.argmax(values)
-            # if the prediction doesn't match, update w,b
+                # if the prediction doesn't match, update w
                 if y_hat != y:
                     w[y, :] = w[y, :] + eta * x
                     w[y_hat, :] = w[y_hat, :] - eta * x
-            elif key=='svm':
+            elif key == 'svm':
                 values[y] = - np.inf
                 y_hat = np.argmax(values)
                 s = 1 - eta * Lambda
@@ -87,7 +94,7 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
                         w[l, :] = s * w[l, :] - eta * x
                     else:
                         w[l, :] = s * w[l, :]
-            elif key=='pa':
+            elif key == 'pa':
                 values[y] = - np.inf
                 y_hat = np.argmax(values)
                 # compute tau
@@ -100,8 +107,8 @@ def train(train_x, train_y, epochs, eta, Lambda, key):
                          w[y, :] = w[y, :] + tau * x
                     if l == y_hat:
                         w[y_hat, :] = w[y_hat, :] - tau * x
-        train_acc = evaluate(train_x, train_y, w)
-        dev_acc = evaluate(train_x, train_y, w)
+        dev_acc = evaluate(dev_x, dev_y, w)
+        ep += 1
     return w
 
 
@@ -120,7 +127,7 @@ def evaluate(dev_x, dev_y, w):
 
 def predict(test_x, w):
     N = len(test_x)
-    y_hats = np.zeros(N, dtype = int)
+    y_hats = np.zeros(N, dtype=int)
     for i in range(N):
         x = test_x[i]
         values = np.dot(w, x)
@@ -140,23 +147,19 @@ def main(argv):
     global dev_x, dev_y
     train_x, dev_x, train_y, dev_y = train_dev_split(train_data, train_labels)
     # Train parameters with 3 algorithms
-    w_per = train(train_x, train_y, epochs=150, eta=0.01, Lambda=None,  key ='per')
-    w_svm = train(train_x, train_y, epochs=150, eta=0.1, Lambda=0.1,  key ='svm')
-    w_pa = train(train_x, train_y, epochs=100, eta=None, Lambda=None,  key ='pa')
+    w_per = train(train_x, train_y, epochs=150, eta=0.01, Lambda=None,  key='per')
+    w_svm = train(train_x, train_y, epochs=150, eta=0.1, Lambda=0.1,  key='svm')
+    w_pa = train(train_x, train_y, epochs=100, eta=None, Lambda=None,  key='pa')
     # Predict test and print prediction
     y_hats_per = predict(test_x, w_per)
     y_hats_svm = predict(test_x, w_svm)
     y_hats_pa = predict(test_x, w_pa)
-    '''for i in range(len(test_x)):
+    for i in range(len(test_x)):
         print('perceptron: ' + str(y_hats_per[i]) + ', ' + 'svm: ' +
               str(y_hats_svm[i]) + ', ' 'pa: ' + str(y_hats_pa[i]))
-    print(y_hats_per)
-    print(y_hats_svm)
-    print(y_hats_pa)'''
 
 
 # main
 if __name__ == '__main__':
-    # Real command
-    # main(sys.argv)
-    main(['ex2.py', 'train_x.txt', 'train_y.txt', 'train_x.txt'])
+    main(sys.argv)
+    # main(['ex2.py', 'train_x.txt', 'train_y.txt', 'train_x.txt'])
